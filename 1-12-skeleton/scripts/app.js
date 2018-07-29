@@ -1,5 +1,4 @@
-
-(function() {
+ (function() {
   'use strict';
 
   var weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
@@ -13,6 +12,34 @@
     container: document.querySelector('.main'),
     addDialog: document.querySelector('.dialog-container'),
     daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  };
+
+
+  var injectedForecast = {
+    key: 'newyork',
+    label: 'New York, NY',
+    currently: {
+      time: 1453489481,
+      summary: 'Clear',
+      icon: 'partly-cloudy-day',
+      temperature: 52.74,
+      apparentTemperature: 74.34,
+      precipProbability: 0.20,
+      humidity: 0.77,
+      windBearing: 125,
+      windSpeed: 1.52
+    },
+    daily: {
+      data: [
+        { icon: 'clear-day', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'rain', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'snow', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'sleet', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'fog', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'wind', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'partly-cloudy-day', temperatureMax: 55, temperatureMin: 34 }
+      ]
+    }
   };
 
 
@@ -35,12 +62,14 @@
 
   /* Event listener for add city button in add city dialog */
   document.getElementById('butAddCity').addEventListener('click', function() {
+
     var select = document.getElementById('selectCityToAdd');
     var selected = select.options[select.selectedIndex];
     var key = selected.value;
     var label = selected.textContent;
     app.getForecast(key, label);
     app.selectedCities.push({key: key, label: label});
+    app.saveSelectedCities();
     app.toggleAddDialog(false);
   });
 
@@ -126,7 +155,23 @@
   // Gets a forecast for a specific city and update the card with the data
   app.getForecast = function(key, label) {
     var url = weatherAPIUrlBase + key + '.json';
+    if ('caches' in window) {
+      caches.match(url).then(function(response){
+        if(response) {
+          response.json().then(function(json) {
+            // only update if the XHR is still pending, otherwise the XHR
+            // has already returned and provided the latest data.
+            if(app.hasRequestPending) {
+              json.key = key;            
+              json.label = label;            
+              app.updateForecastCard(json);
+            }
+          });
+        }
+      })
+    }
     // Make the XHR to get the data, then update the card
+    app.hasRequestPending = true;
     var request = new XMLHttpRequest();
     request.onreadystatechange = function() {
       if (request.readyState === XMLHttpRequest.DONE) {
@@ -149,5 +194,45 @@
       app.getForecast(key);
     });
   };
+
+  app.saveSelectedCities = function () {
+    window.localforage.setItem('SelectedCities', app.selectedCities);
+  };
+
+  document.addEventListener('DOMConteentLoaded', function(){
+    window.localforage.getItem('selectedCities', function(err, cityList){
+      if(cityList) {
+        app.selectedCities = cityList;
+        app.selectedCities.forEach(function(city) {
+          app.getForecast(city.key, city.label);
+        });
+      }
+      else {
+        app.updateForecastCard(injectedForecast);
+        app.selectedCities = [
+          {key:injectedForecast.key, label:injectedForecast.label}
+        ];
+        app.saveSelectedCities();
+      }
+    })
+  });
+  app.updateForecastCard(injectedForecast);
+
+
+
+/*******************************************************************************************************************
+ * Service Workers
+ ***************************************************************************************************************/
+
+   if ('serviceWorker' in navigator) {
+     navigator.serviceWorker
+       .register('/service-worker.js')
+       .then(
+         function (registration) {
+           console.log('------------------------------------');
+           console.log('Service Worker Registered', registration);
+           console.log('------------------------------------');
+         });
+   }
 
 })();

@@ -1,5 +1,6 @@
 var dataCacheName = 'weatherData-final';
-var cacheName = 'weatherPWA-dtep-final-1';
+var cacheName = 'weatherPWA-step-final-1';
+var weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
 var fileToCache = [
     '/',
     '/index.html',
@@ -47,14 +48,15 @@ self.addEventListener('activate', function (e) {
 });
 
 self.addEventListener('fetch', function(e) {
-    console.log('[ServiceWorker] Fetch', e.result.url);
-    if (e.request.url.start(dataUrl)) {
+    console.log('[ServiceWorker] Fetch', e.request.url);
+    if (e.request.url.startsWith(weatherAPIUrlBase)) {
         e.respondWith(
             fetch(e.request)
             .then(function(response) {
                 return caches.open(dataCacheName).then(function(cache) {
                     cache.put(e.request.url, response.clone());
-                    console.log('[ServiceWorker] Fetch&Cached Data');
+                    console.log('[ServiceWorker] Fetch & Cached Data');
+                    console.log(response);
                     return response;
                 })
             })
@@ -62,32 +64,29 @@ self.addEventListener('fetch', function(e) {
     } else {
         e.respondWith(
             caches.match(e.request).then(function(response){
+                console.log('[ServiceWorker] Fetch Data Only');
                 return response || fetch(e.request);
-            });
-        );
+            }
+        ));
     }
 });
 
-onfetch = function (e) {
-    var url = e.request.url;
-    if(url == "app.html") {
-        e.respondWith(
-            caches.match(e.request)
-        );
-    }
+// onfetch = function (e) {
+//     var url = e.request.url;
+//     if(url == "app.html") {
+//         e.respondWith(
+//             caches.match(e.request)
+//         );
+//     }
 
-    if(url == "content.json") {
-        // got to the network for updates
-        // then cache response and return
-
-        e.respondWith(
-            fetch(...).then(function(r){
-                cache.put(url, r.clone());
-                return r;
-            })
-        );
-    }
-  }
-
-
- 
+//     if(url == "content.json") {
+//         // got to the network for updates
+//         // then cache response and return
+//         e.respondWith(
+//             fetch(...).then(function(r){
+//                 cache.put(url, r.clone());
+//                 return r;
+//             })
+//         );
+//     }
+//   }

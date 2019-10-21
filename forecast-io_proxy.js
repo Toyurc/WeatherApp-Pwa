@@ -31,23 +31,23 @@ function handleRequest(request, response) {
   if (!cityCoords) {
     response.statusCode = 404;
     response.end();
-    console.log('404  ', request.url);
+    console.log('ERROR 404 - [NOT FOUND] => ', request.url);
     return;
   }
-  console.log('REQ  ', request.url);
+  console.log('REQUEST => ', request.url);
   response.setHeader('Content-Type', 'application/json');
   response.setHeader('X-Powered-By', 'fIO.proxy');
   var cachedForecast = cachedForecasts[cityName];
   if (cachedForecast && Date.now() < cachedForecast.expiresAt) {
     response.end(JSON.stringify(cachedForecast));
-    console.log('RESP ', cityName, '[cache]');
+    console.log('RESPONSE => ', cityName, '[cache]');
   } else {
     getForecast(cityCoords, function(freshForecast) {
       response.end(freshForecast);
       var forecast = JSON.parse(freshForecast);
       forecast.expiresAt = Date.now() + (1000 * 60);
       cachedForecasts[cityName] = forecast; 
-      console.log('RESP ', cityName, '[network]');     
+      console.log('RESPONSE => ', cityName, '[network]');     
     });
   }
 }
@@ -73,5 +73,5 @@ function getForecast(coords, callback) {
 var httpServer = http.createServer(handleRequest);
 
 httpServer.listen(port, function() {
-  console.log('Forecast.io proxy server started...', port);
+  console.log('Forecast.io proxy server started on port: ', port);
 });
